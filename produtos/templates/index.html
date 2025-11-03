@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Home - Biroska</title>
+{% load static %}
+<!-- Bootstrap -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<!-- CSS personalizado -->
+<link rel="stylesheet" href="{% static 'style.css' %}">
+<style>
+    /* Carrinho lateral */
+    #cart {
+        position: fixed;
+        top: 0;
+        right: 0;
+        width: 300px;
+        height: 100%;
+        background: white;
+        border-left: 1px solid #ddd;
+        box-shadow: -2px 0 5px rgba(0,0,0,0.3);
+        padding: 20px;
+        overflow-y: auto;
+        transform: translateX(100%);
+        transition: transform 0.3s;
+        z-index: 1050;
+    }
+</style>
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg navbar-light bg-light">
+  <div class="container">
+    <a class="navbar-brand" href="{% url 'home' %}">Biroska</a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+            aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarNav">
+      <ul class="navbar-nav me-auto">
+        <li class="nav-item">
+          <a class="nav-link active" aria-current="page" href="{% url 'home' %}">Home</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="{% url 'lista_produtos' %}">Produtos</a>
+        </li>
+      </ul>
+      <ul class="navbar-nav">
+        <!-- Ícone do usuário / saudação -->
+        <li class="nav-item">
+          <a class="nav-link" href="#" id="user-greeting" data-bs-toggle="modal" data-bs-target="#modalCadastro">
+            👤
+          </a>
+        </li>
+        <!-- Ícone do carrinho -->
+        <li class="nav-item">
+          <a class="nav-link position-relative" href="#" onclick="toggleCart()">
+            🛒
+            <span class="badge bg-danger position-absolute top-0 start-100 translate-middle" id="cart-count">0</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<!-- Conteúdo principal -->
+<div class="container mt-5 text-center">
+    <h1>Bem-vindo à Biroska!</h1>
+    <p>Confira nossos produtos e aproveite as melhores ofertas online.</p>
+</div>
+
+<!-- Grid de produtos -->
+<div class="container mt-4">
+    <div id="products" class="row">
+        <!-- Produtos adicionados via JS -->
+    </div>
+</div>
+
+<!-- Carrinho lateral -->
+<div id="cart">
+    <h5>Carrinho</h5>
+    <div id="cart-items"></div>
+    <p>Total: R$ <span id="cart-total">0.00</span></p>
+    <button class="btn btn-primary w-100 mt-2" onclick="finalizarCompra()">Finalizar Compra</button>
+</div>
+
+<!-- Modal de cadastro/login -->
+<div class="modal fade" id="modalCadastro" tabindex="-1" aria-labelledby="modalCadastroLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalCadastroLabel">Cadastro / Login</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <div class="modal-body">
+        <form id="cadastro">
+          <div class="mb-3 d-flex align-items-center">
+            👤<input type="text" class="form-control ms-2" placeholder="Nome" required>
+          </div>
+          <div class="mb-3 d-flex align-items-center">
+            🆔<input type="text" class="form-control ms-2" placeholder="CPF" required>
+          </div>
+          <div class="mb-3 d-flex align-items-center">
+            🏠<input type="text" class="form-control ms-2" placeholder="Endereço" required>
+          </div>
+          <div class="mb-3 d-flex align-items-center">
+            📞<input type="text" class="form-control ms-2" placeholder="Telefone" required>
+          </div>
+          <button type="submit" class="btn btn-primary w-100">Cadastrar</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+let userCadastrado = false;
+let userName = '';
+
+const products = [
+  {id:1, name:'Arroz', price:10, img:"{% static 'saco_de_arroz.png' %}"},
+  {id:2, name:'Feijão', price:8, img:"{% static 'saco_de_feijao.png' %}"},
+  {id:3, name:'Farinha de trigo', price:5, img:"{% static 'saco_de_farinha.png' %}"},
+  {id:4, name:'Macarrão', price:7, img:"{% static 'saco_de_macarrao.png' %}"},
+  {id:5, name:'azeite', price:12, img:"{% static 'azeite.png' %}"},
+  {id:6, name:'Açúcar', price:6, img:"{% static 'saco_de_açucar.png' %}"},
+  {id:7, name:'Sal', price:3, img:"{% static 'saco_de_sal.png' %}"},
+  {id:8, name:'Café', price:15, img:"{% static 'saco_de_cafe.png' %}"}
+];
+
+const cart = [];
+
+function renderProducts() {
+  const container = document.getElementById('products');
+  container.innerHTML = '';
+  products.forEach(p => {
+    const div = document.createElement('div');
+    div.className = 'col-md-4 mb-4';
+    div.innerHTML = `
+      <div class="card">
+        <img src="${p.img}" class="card-img-top" alt="${p.name}">
+        <div class="card-body text-center">
+          <h5 class="card-title">${p.name}</h5>
+          <p class="card-text">R$ ${p.price.toFixed(2)}</p>
+          <button class="btn btn-success" onclick="addToCart(${p.id})">Adicionar 🛒</button>
+        </div>
+      </div>
+    `;
+    container.appendChild(div);
+  });
+}
+
+function addToCart(id) {
+  const product = products.find(p => p.id === id);
+  const item = cart.find(c => c.id === id);
+  if(item) item.qty += 1;
+  else cart.push({...product, qty:1});
+  renderCart();
+}
+
+function removeFromCart(id) {
+  const index = cart.findIndex(c => c.id === id);
+  if(index !== -1) cart.splice(index,1);
+  renderCart();
+}
+
+function renderCart() {
+  const cartItems = document.getElementById('cart-items');
+  cartItems.innerHTML = '';
+  let total = 0;
+  cart.forEach(item => {
+    total += item.price * item.qty;
+    const div = document.createElement('div');
+    div.className = 'd-flex justify-content-between align-items-center mb-2';
+    div.innerHTML = `
+      <span>${item.name} x${item.qty} - R$ ${(item.price*item.qty).toFixed(2)}</span>
+      <button class="btn btn-sm btn-danger" onclick="removeFromCart(${item.id})">🗑️</button>
+    `;
+    cartItems.appendChild(div);
+  });
+  document.getElementById('cart-total').textContent = total.toFixed(2);
+  document.getElementById('cart-count').textContent = cart.reduce((acc,i)=>acc+i.qty,0);
+}
+
+function toggleCart() {
+  const cartEl = document.getElementById('cart');
+  if(cartEl.style.transform === 'translateX(0%)') cartEl.style.transform = 'translateX(100%)';
+  else cartEl.style.transform = 'translateX(0%)';
+}
+
+function finalizarCompra() {
+  if(!userCadastrado) {
+    alert('Você precisa se cadastrar para finalizar a compra!');
+    const modal = new bootstrap.Modal(document.getElementById('modalCadastro'));
+    modal.show();
+    return;
+  }
+  alert('Compra finalizada com sucesso!');
+  cart.length = 0;
+  renderCart();
+}
+
+// Cadastro com saudação e logoff
+document.getElementById('cadastro').addEventListener('submit', function(e){
+  e.preventDefault();
+  userName = this.querySelector('input[type="text"]').value;
+  userCadastrado = true;
+
+  const userGreeting = document.getElementById('user-greeting');
+  userGreeting.textContent = `Olá, ${userName} 👋`;
+  userGreeting.removeAttribute('data-bs-toggle');
+  userGreeting.removeAttribute('data-bs-target');
+
+  // Clicar para "logoff"
+  userGreeting.onclick = () => {
+    userCadastrado = false;
+    userName = '';
+    userGreeting.textContent = '👤';
+    userGreeting.setAttribute('data-bs-toggle', 'modal');
+    userGreeting.setAttribute('data-bs-target', '#modalCadastro');
+  };
+
+  alert('Cadastro realizado com sucesso!');
+  bootstrap.Modal.getInstance(document.getElementById('modalCadastro')).hide();
+});
+
+renderProducts();
+</script>
+</body>
+</html>
